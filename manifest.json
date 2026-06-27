@@ -1,0 +1,26 @@
+{
+    "name": "TLA Countdown",
+    "short_name": "TLA Countdown",
+    "description": "The Learners Academy Spelling Bee Countdown App",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#060a14",
+    "theme_color": "#060a14",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["education"],
+    "lang": "en"
+}

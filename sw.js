@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Learners Academy Countdown App</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="TLA Countdown">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TLA Countdown">
+    <meta name="theme-color" content="#060a14">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg: #060a14;
+            --bg-card: rgba(12, 20, 38, 0.88);
+            --accent: #d4920a;
+            --accent-light: #f5c842;
+            --accent-glow: rgba(212, 146, 10, 0.18);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.25);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.3);
+            --text: #e8ecf1;
+            --text-dim: #8892a8;
+            --border: rgba(90, 101, 128, 0.18);
+            --radius: 14px;
+            --font-d: 'Oswald', sans-serif;
+            --font-b: 'Source Sans 3', sans-serif;
+        }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html, body { height:100%; overflow:hidden; }
+        body {
+            font-family: var(--font-b);
+            background: var(--bg);
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body::before {
+            content:'';
+            position:fixed; inset:0;
+            background:
+                radial-gradient(ellipse at 15% 50%, rgba(212,146,10,0.07) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 25%, rgba(16,185,129,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 90%, rgba(212,146,10,0.05) 0%, transparent 45%);
+            pointer-events:none; z-index:0;
+        }
+        /* Safe area padding for notched phones */
+        .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+        .screen {
+            position:fixed; inset:0;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            opacity:0; visibility:hidden;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+            z-index:1; overflow-y:auto; padding:16px;
+            padding-top: calc(16px + env(safe-area-inset-top, 0px));
+            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+        .screen.active { opacity:1; visibility:visible; }
+
+        .logo-area { text-align:center; margin-bottom:36px; }
+        .logo-icon {
+            width:72px; height:72px; border-radius:50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:32px; color:#060a14; margin-bottom:14px;
+            box-shadow: 0 0 40px var(--accent-glow);
+        }
+        .logo-title {
+            font-family:var(--font-d); font-size:26px; font-weight:700;
+            letter-spacing:2px; text-transform:uppercase;
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            background-clip:text;
+        }
+        .logo-sub {
+            font-size:13px; color:var(--text-dim); margin-top:4px;
+            letter-spacing:4px; text-transform:uppercase;
+        }
+        .role-cards { display:flex; gap:16px; width:100%; max-width:420px; }
+        .role-card {
+            flex:1; padding:32px 16px; border-radius:var(--radius);
+            background:var(--bg-card); border:1px solid var(--border);
+            text-align:center; cursor:pointer;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .role-card:active { transform:scale(0.97); }
+        .role-card:hover, .role-card:focus-visible {
+            border-color:var(--accent); box-shadow:0 0 30px var(--accent-glow);
+        }
+        .role-card i { font-size:36px; margin-bottom:14px; display:block; }
+        .role-card.judge i { color:var(--accent-light); }
+        .role-card.participant i { color:var(--success); }
+        .role-card h3 { font-family:var(--font-d); font-size:20px; font-weight:600; letter-spacing:1px; }
+        .role-card p { font-size:12px; color:var(--text-dim); margin-top:6px; line-height:1.5; }
+
+        #screen-judge { justify-content:flex-start; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+        .judge-topbar {
+            width:100%; max-width:600px; display:flex; align-items:center; justify-content:space-between;
+            padding:8px 14px; border-radius:10px; background:var(--bg-card);
+            border:1px solid var(--border); margin-bottom:10px; flex-shrink:0;
+            transition: opacity 0.4s, transform 0.4s;
+        }
+        .judge-topbar.hide { opacity:0; transform:translateY(-20px); pointer-events:none; position:absolute; }
+        .room-badge {
+            font-family:var(--font-d); font-size:20px; font-weight:700;
+            color:var(--accent-light); letter-spacing:3px;
+        }
+        .room-badge small { font-size:11px; color:var(--text-dim); font-weight:400; letter-spacing:1px; display:block; font-family:var(--font-b); }
+        .conn-count { font-size:13px; color:var(--text-dim); }
+        .conn-count b { color:var(--success); }
+        .btn-icon {
+            width:38px; height:38px; border-radius:50%; border:1px solid var(--border);
+            background:transparent; color:var(--text-dim); font-size:16px; cursor:pointer;
+            display:inline-flex; align-items:center; justify-content:center;
+            transition: all 0.2s;
+        }
+        .btn-icon:active { transform:scale(0.92); }
+        .btn-icon:hover { border-color:var(--accent); color:var(--accent-light); }
+
+        .judge-display {
+            flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+            width:100%; max-width:700px; min-height:0;
+        }
+        .display-header {
+            font-family:var(--font-d); text-align:center; margin-bottom:8px;
+            transition: font-size 0.4s;
+        }
+        .display-header h1 {
+            font-size:18px; font-weight:600; letter-spacing:3px; text-transform:uppercase;
+            color:var(--accent-light);
+        }
+        .display-header h2 {
+            font-size:13px; font-weight:400; letter-spacing:5px; text-transform:uppercase;
+            color:var(--text-dim); margin-top:2px;
+        }
+        .pres-mode .display-header h1 { font-size:28px; }
+        .pres-mode .display-header h2 { font-size:16px; }
+
+        .countdown-wrap { position:relative; margin:10px 0; }
+        .countdown-glow {
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            width:220px; height:220px; border-radius:50%;
+            background:radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events:none; transition: width 0.4s, height 0.4s;
+        }
+        .pres-mode .countdown-glow { width:340px; height:340px; }
+        .countdown-number {
+            font-family:var(--font-d); font-size:18vmin; font-weight:700;
+            letter-spacing:4px; color:var(--text);
+            position:relative; z-index:1; line-height:1;
+            transition: color 0.3s, font-size 0.4s;
+        }
+        .pres-mode .countdown-number { font-size:24vmin; }
+        .countdown-number.running { color:var(--accent-light); }
+        .countdown-number.urgent { color:var(--danger); animation: pulse 0.6s ease-in-out infinite; }
+        .countdown-number.ended { color:var(--danger); animation: flash 0.5s ease-in-out 3; }
+        .countdown-number.idle { color:var(--text-dim); }
+
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+        @keyframes flash { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .results-area {
+            width:100%; max-width:440px; margin-top:12px;
+            transition: max-width 0.4s;
+        }
+        .pres-mode .results-area { max-width:600px; }
+        .results-title {
+            font-family:var(--font-d); font-size:13px; letter-spacing:3px; text-transform:uppercase;
+            color:var(--text-dim); text-align:center; margin-bottom:8px;
+        }
+        .result-item {
+            display:flex; align-items:center; gap:12px;
+            padding:10px 16px; border-radius:10px; margin-bottom:6px;
+            background:var(--bg-card); border:1px solid var(--border);
+            animation: slideIn 0.35s ease-out;
+            transition: padding 0.4s;
+        }
+        .pres-mode .result-item { padding:14px 24px; }
+        @keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+        .result-rank {
+            font-family:var(--font-d); font-size:20px; font-weight:700; min-width:44px; text-align:center;
+        }
+        .pres-mode .result-rank { font-size:28px; min-width:60px; }
+        .result-rank.gold { color:#ffd700; }
+        .result-rank.silver { color:#c0c0c0; }
+        .result-rank.bronze { color:#cd7f32; }
+        .result-rank.other { color:var(--text-dim); }
+        .result-name { flex:1; font-weight:600; font-size:15px; }
+        .pres-mode .result-name { font-size:20px; }
+        .result-time { font-family:var(--font-d); font-size:16px; color:var(--accent-light); letter-spacing:1px; }
+        .pres-mode .result-time { font-size:22px; }
+        .no-results { text-align:center; color:var(--text-dim); font-size:13px; padding:20px; }
+
+        .judge-controls {
+            width:100%; max-width:600px; flex-shrink:0;
+            padding:10px 0 16px; transition: opacity 0.4s, transform 0.4s;
+        }
+        .judge-controls.hide { opacity:0; transform:translateY(20px); pointer-events:none; position:absolute; }
+        .time-setter {
+            display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:12px;
+        }
+        .time-setter label { font-size:13px; color:var(--text-dim); text-transform:uppercase; letter-spacing:2px; }
+        .time-adj {
+            width:44px; height:44px; border-radius:50%; border:1px solid var(--border);
+            background:var(--bg-card); color:var(--text); font-size:20px; cursor:pointer;
+            display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s;
+        }
+        .time-adj:active { transform:scale(0.9); background:var(--accent-glow); border-color:var(--accent); }
+        .time-display-set {
+            font-family:var(--font-d); font-size:32px; font-weight:600;
+            min-width:100px; text-align:center; letter-spacing:2px;
+        }
+        .btn-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+        .btn {
+            padding:12px 28px; border-radius:10px; border:none;
+            font-family:var(--font-d); font-size:16px; font-weight:600;
+            letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+            transition: all 0.2s; display:inline-flex; align-items:center; gap:8px;
+        }
+        .btn:active { transform:scale(0.95); }
+        .btn-start { background:var(--success); color:#fff; }
+        .btn-start:hover { box-shadow:0 0 20px var(--success-glow); }
+        .btn-stop { background:var(--danger); color:#fff; }
+        .btn-stop:hover { box-shadow:0 0 20px var(--danger-glow); }
+        .btn-reset { background:transparent; color:var(--text-dim); border:1px solid var(--border); }
+        .btn-reset:hover { border-color:var(--text-dim); color:var(--text); }
+        .btn:disabled { opacity:0.35; pointer-events:none; }
+
+        .part-list {
+            width:100%; max-width:600px; flex-shrink:0;
+            margin-top:8px; transition: opacity 0.4s, max-height 0.4s;
+            overflow:hidden;
+        }
+        .part-list.hide { opacity:0; max-height:0 !important; margin:0; }
+        .part-list-toggle {
+            background:none; border:none; color:var(--text-dim); font-size:12px;
+            cursor:pointer; letter-spacing:2px; text-transform:uppercase;
+            font-family:var(--font-d); margin-bottom:6px; display:flex; align-items:center; gap:6px;
+        }
+        .part-list-toggle i { transition:transform 0.3s; font-size:10px; }
+        .part-list-toggle.open i { transform:rotate(90deg); }
+        .part-chips { display:flex; flex-wrap:wrap; gap:6px; }
+        .part-chip {
+            padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;
+            background:rgba(16,185,129,0.12); color:var(--success); border:1px solid rgba(16,185,129,0.2);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        #screen-participant { justify-content:flex-start; padding-top: calc(20px + env(safe-area-inset-top, 0px)); }
+        .join-form { width:100%; max-width:360px; }
+        .input-group { margin-bottom:14px; }
+        .input-group label {
+            display:block; font-size:11px; color:var(--text-dim); text-transform:uppercase;
+            letter-spacing:2px; margin-bottom:6px;
+        }
+        .input-group input {
+            width:100%; padding:14px 16px; border-radius:10px;
+            border:1px solid var(--border); background:var(--bg-card);
+            color:var(--text); font-size:16px; font-family:var(--font-b);
+            outline:none; transition:border-color 0.2s;
+        }
+        .input-group input:focus { border-color:var(--accent); }
+        .input-group input::placeholder { color:var(--text-dim); opacity:0.6; }
+        .input-group .input-hint { font-size:11px; color:var(--text-dim); margin-top:4px; }
+        .btn-join {
+            width:100%; padding:16px; border-radius:10px; border:none;
+            background:linear-gradient(135deg, var(--accent), var(--accent-light));
+            color:#060a14; font-family:var(--font-d); font-size:18px; font-weight:700;
+            letter-spacing:3px; text-transform:uppercase; cursor:pointer;
+            transition:all 0.2s; margin-top:6px;
+        }
+        .btn-join:active { transform:scale(0.97); }
+        .btn-join:disabled { opacity:0.4; pointer-events:none; }
+        .join-status { text-align:center; margin-top:16px; font-size:13px; color:var(--text-dim); }
+        .join-status .spinner {
+            display:inline-block; width:18px; height:18px; border:2px solid var(--border);
+            border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite;
+            vertical-align:middle; margin-right:6px;
+        }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        .part-game { width:100%; max-width:400px; display:none; flex-direction:column; align-items:center; flex:1; }
+        .part-game.active { display:flex; }
+        .part-status-bar {
+            width:100%; display:flex; justify-content:space-between; align-items:center;
+            padding:8px 0; margin-bottom:8px; font-size:12px; color:var(--text-dim);
+        }
+        .part-status-bar .connected { color:var(--success); }
+        .part-countdown-area { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .part-countdown-number {
+            font-family:var(--font-d); font-size:22vmin; font-weight:700; letter-spacing:3px;
+            line-height:1; transition:color 0.3s;
+        }
+        .part-countdown-number.running { color:var(--accent-light); }
+        .part-countdown-number.urgent { color:var(--danger); animation:pulse 0.6s ease-in-out infinite; }
+        .part-countdown-number.ended { color:var(--danger); }
+        .part-countdown-number.idle { color:var(--text-dim); }
+
+        .stop-btn-wrap { margin:16px 0; }
+        .stop-btn {
+            width:140px; height:140px; border-radius:50%; border:4px solid var(--danger);
+            background:rgba(239,68,68,0.1); color:var(--danger);
+            font-family:var(--font-d); font-size:28px; font-weight:700;
+            letter-spacing:3px; cursor:pointer; position:relative;
+            transition:all 0.2s; display:flex; align-items:center; justify-content:center;
+        }
+        .stop-btn.active {
+            background:var(--danger); color:#fff;
+            box-shadow:0 0 40px var(--danger-glow), 0 0 80px rgba(239,68,68,0.15);
+            animation:btnPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes btnPulse {
+            0%,100%{ box-shadow:0 0 40px var(--danger-glow); }
+            50%{ box-shadow:0 0 60px var(--danger-glow), 0 0 100px rgba(239,68,68,0.2); }
+        }
+        .stop-btn:disabled {
+            opacity:0.25; pointer-events:none; animation:none;
+            background:rgba(239,68,68,0.05); box-shadow:none;
+        }
+        .stop-btn.buzzed {
+            background:var(--success); border-color:var(--success); color:#fff;
+            box-shadow:0 0 40px var(--success-glow);
+            font-size:16px; letter-spacing:1px; animation:none;
+        }
+        .stop-btn:active:not(:disabled) { transform:scale(0.93); }
+
+        .part-results { width:100%; margin-top:8px; }
+        .part-results .result-item { padding:8px 14px; }
+        .part-results .result-rank { font-size:16px; min-width:36px; }
+        .part-results .result-name { font-size:13px; }
+        .part-results .result-time { font-size:14px; }
+
+        .btn-back {
+            position:absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left:14px; z-index:10;
+            width:36px; height:36px; border-radius:50%; border:1px solid var(--border);
+            background:var(--bg-card); color:var(--text-dim); font-size:14px; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; transition:all 0.2s;
+        }
+        .btn-back:active { transform:scale(0.9); }
+
+        .toast-container { position:fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right:16px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+        .toast {
+            padding:12px 20px; border-radius:10px; font-size:13px; font-weight:600;
+            max-width:320px; animation:toastIn 0.3s ease; box-shadow:0 8px 30px rgba(0,0,0,0.4);
+        }
+        .toast.info { background:#1e3a5f; color:#7dd3fc; border:1px solid rgba(125,211,252,0.2); }
+        .toast.error { background:#3b1c1c; color:#fca5a5; border:1px solid rgba(252,165,165,0.2); }
+        .toast.success { background:#1a3a2a; color:#86efac; border:1px solid rgba(134,239,172,0.2); }
+        @keyframes toastIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+
+        @media (max-width:380px) {
+            .role-cards { flex-direction:column; }
+            .role-card { padding:24px 16px; }
+            .logo-title { font-size:22px; }
+            .time-display-set { font-size:26px; }
+            .stop-btn { width:120px; height:120px; font-size:24px; }
+        }
+        @media (min-width:768px) {
+            .countdown-number { font-size:140px; }
+            .pres-mode .countdown-number { font-size:200px; }
+        }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-role" class="screen active">
+        <div class="logo-area">
+            <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div class="logo-title">The Learners Academy</div>
+            <div class="logo-sub">Countdown App</div>
+        </div>
+        <div class="role-cards">
+            <div class="role-card judge" onclick="selectRole('judge')" tabindex="0" role="button" aria-label="Join as Judge">
+                <i class="fas fa-gavel"></i>
+                <h3>Judge</h3>
+                <p>Create a session, set the timer, and control the competition</p>
+            </div>
+            <div class="role-card participant" onclick="selectRole('participant')" tabindex="0" role="button" aria-label="Join as Participant">
+                <i class="fas fa-user"></i>
+                <h3>Participant</h3>
+                <p>Join a session, watch the timer, and buzz when ready</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-judge" class="screen">
+        <button class="btn-back" onclick="goBack()" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+        <div class="judge-topbar" id="judgeTopbar">
+            <div class="room-badge">
+                <small>Room Code</small>
+                <span id="roomCodeDisplay">----</span>
+                <button class="btn-icon" onclick="copyRoomCode()" style="margin-left:6px;width:28px;height:28px;font-size:12px;" aria-label="Copy room code"><i class="fas fa-copy"></i></button>
+            </div>
+            <div class="conn-count"><b id="connCount">0</b> connected</div>
+            <button class="btn-icon" id="btnPresent" onclick="togglePresentation()" aria-label="Toggle presentation mode"><i class="fas fa-expand"></i></button>
+        </div>
+        <div class="judge-display" id="judgeDisplay">
+            <div class="display-header">
+                <h1>The Learners Academy</h1>
+                <h2>Spelling Bee</h2>
+            </div>
+            <div class="countdown-wrap">
+                <div class="countdown-glow" id="judgeGlow"></div>
+                <div class="countdown-number idle" id="judgeCountdown">00:30</div>
+            </div>
+            <div class="results-area" id="judgeResults">
+                <div class="results-title" id="resultsTitle" style="display:none">Buzz-In Results</div>
+                <div id="resultsList"><div class="no-results">Waiting for participants to buzz in...</div></div>
+            </div>
+        </div>
+        <div class="judge-controls" id="judgeControls">
+            <div class="time-setter">
+                <label>Time</label>
+                <button class="time-adj" onclick="adjustTime(-5)" aria-label="Decrease time"><i class="fas fa-minus"></i></button>
+                <div class="time-display-set" id="timeDisplay">00:30</div>
+                <button class="time-adj" onclick="adjustTime(5)" aria-label="Increase time"><i class="fas fa-plus"></i></button>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-start" id="btnStart" onclick="startCountdown()"><i class="fas fa-play"></i> Start</button>
+                <button class="btn btn-stop" id="btnStop" onclick="stopCountdown()" disabled><i class="fas fa-stop"></i> Stop</button>
+                <button class="btn btn-reset" id="btnReset" onclick="resetRound()"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+        </div>
+        <div class="part-list" id="partList" style="max-height:80px;">
+            <button class="part-list-toggle" id="partListToggle" onclick="togglePartList()">
+                <i class="fas fa-chevron-right"></i> Participants
+            </button>
+            <div class="part-chips" id="partChips"></div>
+        </div>
+    </div>
+
+    <div id="screen-participant" class="screen">
+        <button class="btn-back" onclick="goBack()" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+        <div class="join-form" id="joinForm">
+            <div style="text-align:center;margin-bottom:24px;">
+                <div class="logo-icon" style="width:52px;height:52px;font-size:22px;margin-bottom:10px;"><i class="fas fa-graduation-cap"></i></div>
+                <div style="font-family:var(--font-d);font-size:16px;letter-spacing:2px;color:var(--accent-light);">JOIN SESSION</div>
+            </div>
+            <div class="input-group">
+                <label>Your Name</label>
+                <input type="text" id="inputName" placeholder="Enter your full name" maxlength="30" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>Room Code</label>
+                <input type="text" id="inputCode" placeholder="e.g. A3K7" maxlength="4" style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-family:var(--font-d);font-size:24px;" autocomplete="off">
+                <div class="input-hint">Get this code from the judge</div>
+            </div>
+            <button class="btn-join" id="btnJoin" onclick="joinRoom()">Join Session</button>
+            <div class="join-status" id="joinStatus"></div>
+        </div>
+        <div class="part-game" id="partGame">
+            <div class="part-status-bar">
+                <span>Room: <b id="partRoomCode" style="color:var(--accent-light);letter-spacing:2px;">----</b></span>
+                <span class="connected"><i class="fas fa-circle" style="font-size:6px;vertical-align:middle;margin-right:4px;"></i> Connected</span>
+            </div>
+            <div class="part-countdown-area">
+                <div class="part-countdown-number idle" id="partCountdown">00:30</div>
+            </div>
+            <div class="stop-btn-wrap">
+                <button class="stop-btn" id="stopBtn" disabled onclick="buzzIn()">STOP</button>
+            </div>
+            <div class="part-results" id="partResults">
+                <div class="results-title" id="partResultsTitle" style="display:none">Results</div>
+                <div id="partResultsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Register Service Worker for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(function(){});
+        }
+    </script>
+
+    <script>
+    /* ============================================
+       STATE
+    ============================================ */
+    var role = null;
+    var peer = null;
+    var judgeConn = null;
+    var participants = new Map();
+    var duration = 30000;
+    var startTime = 0;
+    var isRunning = false;
+    var countdownRAF = null;
+    var buzzLog = [];
+    var roomCode = '';
+    var presentationMode = false;
+    var partListOpen = false;
+    var hasBuzzed = false;
+    var audioCtx = null;
+
+    /* ============================================
+       AUDIO
+    ============================================ */
+    function getAudioCtx() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioCtx;
+    }
+    function playBeep(freq, dur, vol) {
+        try {
+            var ctx = getAudioCtx();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = freq; osc.type = 'sine';
+            gain.gain.value = vol || 0.15;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+            osc.stop(ctx.currentTime + dur);
+        } catch(e) {}
+    }
+    function playTick() { playBeep(800, 0.08, 0.1); }
+    function playBuzz() { playBeep(1200, 0.15, 0.2); setTimeout(function(){ playBeep(1600, 0.2, 0.2); }, 100); }
+    function playEnd() { playBeep(400, 0.3, 0.2); setTimeout(function(){ playBeep(300, 0.4, 0.2); }, 200); }
+    function playStart() { playBeep(1000, 0.1, 0.15); setTimeout(function(){ playBeep(1400, 0.15, 0.15); }, 120); }
+
+    /* ============================================
+       UTILITIES
+    ============================================ */
+    function formatTime(ms) {
+        var total = Math.max(0, Math.ceil(ms / 1000));
+        var m = Math.floor(total / 60);
+        var s = total % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    function formatTimeShort(ms) {
+        return Math.max(0, ms / 1000).toFixed(1) + 's';
+    }
+    function generateRoomCode() {
+        var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        var code = '';
+        for (var i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        return code;
+    }
+    function showToast(msg, type) {
+        var c = document.getElementById('toastContainer');
+        var t = document.createElement('div');
+        t.className = 'toast ' + (type || 'info');
+        t.textContent = msg; c.appendChild(t);
+        setTimeout(function() {
+            t.style.opacity = '0'; t.style.transform = 'translateX(30px)';
+            t.style.transition = 'all 0.3s';
+            setTimeout(function() { t.remove(); }, 300);
+        }, 3500);
+    }
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+        document.getElementById(id).classList.add('active');
+    }
+    function escapeHtml(text) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(text));
+        return d.innerHTML;
+    }
+
+    /* ============================================
+       NAVIGATION
+    ============================================ */
+    function selectRole(r) {
+        role = r;
+        if (r === 'judge') { initJudge(); showScreen('screen-judge'); }
+        else { showScreen('screen-participant'); }
+    }
+    function goBack() {
+        if (peer) { peer.destroy(); peer = null; }
+        if (countdownRAF) { cancelAnimationFrame(countdownRAF); countdownRAF = null; }
+        isRunning = false; hasBuzzed = false;
+        participants.clear(); buzzLog = []; judgeConn = null;
+        document.getElementById('joinForm').style.display = 'block';
+        document.getElementById('partGame').classList.remove('active');
+        document.getElementById('joinStatus').innerHTML = '';
+        document.getElementById('btnJoin').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        document.getElementById('stopBtn').className = 'stop-btn';
+        document.getElementById('stopBtn').textContent = 'STOP';
+        showScreen('screen-role');
+    }
+
+    /* ============================================
+       JUDGE: INIT
+    ============================================ */
+    function initJudge() {
+        roomCode = generateRoomCode();
+        document.getElementById('roomCodeDisplay').textContent = roomCode;
+        document.getElementById('connCount').textContent = '0';
+        document.getElementById('partChips').innerHTML = '';
+        updateJudgeCountdownDisplay();
+        updateResultsDisplay();
+        updateJudgeButtons();
+
+        peer = new Peer('tla-' + roomCode);
+        peer.on('open', function() { showToast('Room created! Code: ' + roomCode, 'success'); });
+        peer.on('connection', function(conn) { handleParticipantConnection(conn); });
+        peer.on('error', function(err) {
+            if (err.type === 'unavailable-id') {
+                roomCode = generateRoomCode();
+                document.getElementById('roomCodeDisplay').textContent = roomCode;
+                peer.destroy();
+                setTimeout(function() { initJudge(); }, 500);
+            } else if (err.type === 'peer-unavailable') {
+                showToast('A participant could not connect.', 'error');
+            } else {
+                console.error('Peer error:', err);
+                showToast('Connection error: ' + err.type, 'error');
+            }
+        });
+        peer.on('disconnected', function() {
+            if (peer && !peer.destroyed) peer.reconnect();
+        });
+    }
+
+    function handleParticipantConnection(conn) {
+        conn.on('open', function() {});
+        conn.on('data', function(data) {
+            if (data.type === 'join') {
+                var name = getUniqueName(data.name);
+                participants.set(conn.peer, { name: name, conn: conn });
+                conn.send({ type: 'sync', duration: duration, isRunning: isRunning, startTime: startTime, buzzLog: buzzLog });
+                updateParticipantList();
+                showToast(name + ' joined', 'info');
+            }
+            if (data.type === 'buzz' && isRunning) {
+                var existing = buzzLog.find(function(b) { return b.peerId === conn.peer; });
+                if (existing) return;
+                var relativeTime = data.timestamp - startTime;
+                var entry = { name: data.name, relativeTime: relativeTime, peerId: conn.peer };
+                buzzLog.push(entry);
+                buzzLog.sort(function(a, b) { return a.relativeTime - b.relativeTime; });
+                playBuzz();
+                updateResultsDisplay();
+                broadcastToAll({ type: 'buzzLog', buzzLog: buzzLog });
+                var rank = buzzLog.findIndex(function(b) { return b.peerId === conn.peer; }) + 1;
+                conn.send({ type: 'buzzConfirmed', rank: rank });
+            }
+        });
+        conn.on('close', function() {
+            var p = participants.get(conn.peer);
+            if (p) { showToast(p.name + ' disconnected', 'info'); participants.delete(conn.peer); updateParticipantList(); }
+        });
+        conn.on('error', function(err) { console.error('Conn error:', err); });
+    }
+
+    function getUniqueName(name) {
+        var finalName = name, counter = 2, names = [];
+        participants.forEach(function(p) { names.push(p.name); });
+        while (names.indexOf(finalName) !== -1) { finalName = name + ' (' + counter + ')'; counter++; }
+        return finalName;
+    }
+
+    function broadcastToAll(data) {
+        participants.forEach(function(p) {
+            try { if (p.conn && p.conn.open) p.conn.send(data); } catch(e) {}
+        });
+    }
+
+    /* ============================================
+       JUDGE: TIME SETTER
+    ============================================ */
+    function adjustTime(delta) {
+        if (isRunning) return;
+        duration = Math.max(5000, Math.min(600000, duration + delta * 1000));
+        updateJudgeCountdownDisplay();
+    }
+    function updateJudgeCountdownDisplay() {
+        document.getElementById('judgeCountdown').textContent = formatTime(duration);
+        document.getElementById('timeDisplay').textContent = formatTime(duration);
+    }
+
+    /* ============================================
+       JUDGE: COUNTDOWN
+    ============================================ */
+    function startCountdown() {
+        if (isRunning) return;
+        if (participants.size === 0) { showToast('No participants connected yet', 'error'); return; }
+        isRunning = true; startTime = Date.now(); buzzLog = [];
+        updateResultsDisplay(); updateJudgeButtons(); playStart();
+        broadcastToAll({ type: 'countdownStart', duration: duration, startTime: startTime });
+        updateCountdownLoop();
+    }
+    function stopCountdown() {
+        if (!isRunning) return;
+        isRunning = false;
+        if (countdownRAF) { cancelAnimationFrame(countdownRAF); countdownRAF = null; }
+        playEnd(); updateJudgeButtons(); updateJudgeCountdownState();
+        broadcastToAll({ type: 'countdownStop' });
+    }
+    function resetRound() {
+        isRunning = false;
+        if (countdownRAF) { cancelAnimationFrame(countdownRAF); countdownRAF = null; }
+        buzzLog = [];
+        updateJudgeCountdownDisplay(); updateJudgeButtons(); updateResultsDisplay();
+        document.getElementById('judgeCountdown').className = 'countdown-number idle';
+        broadcastToAll({ type: 'reset', duration: duration });
+    }
+    function updateCountdownLoop() {
+        if (!isRunning) return;
+        var elapsed = Date.now() - startTime;
+        var remaining = duration - elapsed;
+        var el = document.getElementById('judgeCountdown');
+        el.textContent = formatTime(remaining);
+        if (remaining <= 5000 && remaining > 0) {
+            el.className = 'countdown-number urgent';
+            var sec = Math.ceil(remaining / 1000);
+            var prevSec = Math.ceil((remaining + 16) / 1000);
+            if (sec !== prevSec) playTick();
+        } else if (remaining <= 0) {
+            el.textContent = '00:00'; el.className = 'countdown-number ended';
+            isRunning = false; updateJudgeButtons(); playEnd();
+            broadcastToAll({ type: 'countdownStop' }); return;
+        } else { el.className = 'countdown-number running'; }
+        countdownRAF = requestAnimationFrame(updateCountdownLoop);
+    }
+    function updateJudgeCountdownState() {
+        var el = document.getElementById('judgeCountdown');
+        if (isRunning) { el.className = 'countdown-number running'; }
+        else {
+            var remaining = duration - (Date.now() - startTime);
+            el.className = remaining <= 0 ? 'countdown-number ended' : 'countdown-number idle';
+        }
+    }
+    function updateJudgeButtons() {
+        document.getElementById('btnStart').disabled = isRunning;
+        document.getElementById('btnStop').disabled = !isRunning;
+    }
+
+    /* ============================================
+       JUDGE: RESULTS
+    ============================================ */
+    function updateResultsDisplay() {
+        var titleEl = document.getElementById('resultsTitle');
+        var listEl = document.getElementById('resultsList');
+        if (buzzLog.length === 0) {
+            titleEl.style.display = 'none';
+            listEl.innerHTML = '<div class="no-results">Waiting for participants to buzz in...</div>';
+            updatePartResultsDisplay(); return;
+        }
+        titleEl.style.display = 'block';
+        var html = '';
+        buzzLog.forEach(function(e, i) {
+            var rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'other';
+            var ord = i === 0 ? '1st' : i === 1 ? '2nd' : i === 2 ? '3rd' : (i+1) + 'th';
+            html += '<div class="result-item"><div class="result-rank '+rc+'">'+ord+'</div><div class="result-name">'+escapeHtml(e.name)+'</div><div class="result-time">'+formatTimeShort(e.relativeTime)+'</div></div>';
+        });
+        listEl.innerHTML = html;
+        updatePartResultsDisplay();
+    }
+    function updatePartResultsDisplay() {
+        var titleEl = document.getElementById('partResultsTitle');
+        var listEl = document.getElementById('partResultsList');
+        if (buzzLog.length === 0) { titleEl.style.display = 'none'; listEl.innerHTML = ''; return; }
+        titleEl.style.display = 'block';
+        var html = '';
+        buzzLog.forEach(function(e, i) {
+            var rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'other';
+            var ord = i === 0 ? '1st' : i === 1 ? '2nd' : i === 2 ? '3rd' : (i+1) + 'th';
+            html += '<div class="result-item"><div class="result-rank '+rc+'">'+ord+'</div><div class="result-name">'+escapeHtml(e.name)+'</div><div class="result-time">'+formatTimeShort(e.relativeTime)+'</div></div>';
+        });
+        listEl.innerHTML = html;
+    }
+
+    /* ============================================
+       JUDGE: PARTICIPANT LIST & PRESENTATION
+    ============================================ */
+    function updateParticipantList() {
+        document.getElementById('connCount').textContent = participants.size;
+        var html = '';
+        participants.forEach(function(p) { html += '<span class="part-chip">' + escapeHtml(p.name) + '</span>'; });
+        document.getElementById('partChips').innerHTML = html;
+    }
+    function togglePartList() {
+        partListOpen = !partListOpen;
+        var t = document.getElementById('partListToggle');
+        var l = document.getElementById('partList');
+        if (partListOpen) { t.classList.add('open'); l.style.maxHeight = '200px'; }
+        else { t.classList.remove('open'); l.style.maxHeight = '80px'; }
+    }
+    function togglePresentation() {
+        presentationMode = !presentationMode;
+        var d = document.getElementById('judgeDisplay');
+        if (presentationMode) {
+            d.classList.add('pres-mode');
+            document.getElementById('judgeTopbar').classList.add('hide');
+            document.getElementById('judgeControls').classList.add('hide');
+            document.getElementById('partList').classList.add('hide');
+            document.getElementById('btnPresent').innerHTML = '<i class="fas fa-compress"></i>';
+            try { var el = document.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch(e) {}
+        } else {
+            d.classList.remove('pres-mode');
+            document.getElementById('judgeTopbar').classList.remove('hide');
+            document.getElementById('judgeControls').classList.remove('hide');
+            document.getElementById('partList').classList.remove('hide');
+            document.getElementById('btnPresent').innerHTML = '<i class="fas fa-expand"></i>';
+            try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch(e) {}
+        }
+    }
+    function copyRoomCode() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(roomCode).then(function() { showToast('Copied: ' + roomCode, 'success'); }).catch(function() { fallbackCopy(roomCode); });
+        } else { fallbackCopy(roomCode); }
+    }
+    function fallbackCopy(text) {
+        var ta = document.createElement('textarea'); ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); showToast('Copied: ' + text, 'success'); }
+        catch(e) { showToast('Code: ' + text, 'info'); }
+        document.body.removeChild(ta);
+    }
+
+    /* ============================================
+       PARTICIPANT: JOIN
+    ============================================ */
+    function joinRoom() {
+        var nameInput = document.getElementById('inputName');
+        var codeInput = document.getElementById('inputCode');
+        var name = nameInput.value.trim();
+        var code = codeInput.value.trim().toUpperCase();
+        if (!name) { showToast('Please enter your name', 'error'); nameInput.focus(); return; }
+        if (code.length !== 4) { showToast('Enter a valid 4-character room code', 'error'); codeInput.focus(); return; }
+        var btnJoin = document.getElementById('btnJoin');
+        var statusEl = document.getElementById('joinStatus');
+        btnJoin.disabled = true;
+        statusEl.innerHTML = '<span class="spinner"></span> Connecting...';
+
+        peer = new Peer();
+        peer.on('open', function() {
+            judgeConn = peer.connect('tla-' + code, { reliable: true });
+            var connected = false;
+            judgeConn.on('open', function() {
+                connected = true;
+                judgeConn.send({ type: 'join', name: name });
+                document.getElementById('joinForm').style.display = 'none';
+                document.getElementById('partGame').classList.add('active');
+                document.getElementById('partRoomCode').textContent = code;
+                showToast('Connected! Wait for the judge to start.', 'success');
+            });
+            judgeConn.on('data', function(data) { handleJudgeData(data); });
+            judgeConn.on('close', function() {
+                if (connected) {
+                    showToast('Disconnected from judge', 'error');
+                    document.getElementById('partGame').classList.remove('active');
+                    document.getElementById('joinForm').style.display = 'block';
+                    btnJoin.disabled = false; statusEl.innerHTML = ''; connected = false;
+                }
+            });
+            judgeConn.on('error', function(err) { console.error('Judge conn error:', err); });
+            setTimeout(function() {
+                if (!connected) {
+                    btnJoin.disabled = false;
+                    statusEl.innerHTML = '<span style="color:var(--danger);">Connection failed. Check the room code.</span>';
+                    if (peer && !peer.destroyed) peer.destroy(); peer = null;
+                }
+            }, 12000);
+        });
+        peer.on('error', function(err) {
+            btnJoin.disabled = false;
+            if (err.type === 'peer-unavailable')
+                statusEl.innerHTML = '<span style="color:var(--danger);">Room not found. Check the code.</span>';
+            else
+                statusEl.innerHTML = '<span style="color:var(--danger);">Error: ' + err.type + '</span>';
+        });
+    }
+
+    /* ============================================
+       PARTICIPANT: HANDLE JUDGE DATA
+    ============================================ */
+    var partStartTime = 0, partDuration = 30000, partIsRunning = false, partRAF = null, lastTickSec = -1;
+
+    function handleJudgeData(data) {
+        var el = document.getElementById('partCountdown');
+        var stopBtn = document.getElementById('stopBtn');
+        if (data.type === 'sync') {
+            partDuration = data.duration; partIsRunning = data.isRunning;
+            partStartTime = data.startTime; buzzLog = data.buzzLog || [];
+            hasBuzzed = buzzLog.some(function(b) { return b.name === document.getElementById('inputName').value.trim(); });
+            if (partIsRunning) {
+                el.className = 'part-countdown-number running';
+                stopBtn.disabled = hasBuzzed;
+                if (!hasBuzzed) stopBtn.className = 'stop-btn active';
+                startPartCountdownLoop();
+            } else {
+                el.textContent = formatTime(partDuration); el.className = 'part-countdown-number idle';
+                stopBtn.disabled = true; stopBtn.className = 'stop-btn';
+            }
+            updatePartResultsDisplay();
+        }
+        if (data.type === 'countdownStart') {
+            partDuration = data.duration; partStartTime = data.startTime;
+            partIsRunning = true; hasBuzzed = false; lastTickSec = -1; buzzLog = [];
+            el.className = 'part-countdown-number running';
+            stopBtn.disabled = false; stopBtn.className = 'stop-btn active'; stopBtn.textContent = 'STOP';
+            document.getElementById('partResultsTitle').style.display = 'none';
+            document.getElementById('partResultsList').innerHTML = '';
+            startPartCountdownLoop();
+        }
+        if (data.type === 'countdownStop') {
+            partIsRunning = false;
+            if (partRAF) { cancelAnimationFrame(partRAF); partRAF = null; }
+            var remaining = partDuration - (Date.now() - partStartTime);
+            if (remaining <= 0) { el.textContent = '00:00'; el.className = 'part-countdown-number ended'; }
+            else { el.className = 'part-countdown-number idle'; }
+            if (!hasBuzzed) { stopBtn.disabled = true; stopBtn.className = 'stop-btn'; }
+        }
+        if (data.type === 'buzzLog') { buzzLog = data.buzzLog; updatePartResultsDisplay(); }
+        if (data.type === 'buzzConfirmed') {
+            hasBuzzed = true; stopBtn.disabled = true; stopBtn.className = 'stop-btn buzzed';
+            var ord = data.rank === 1 ? '1st' : data.rank === 2 ? '2nd' : data.rank === 3 ? '3rd' : data.rank + 'th';
+            stopBtn.textContent = 'YOU ARE #' + ord; playBuzz();
+        }
+        if (data.type === 'reset') {
+            partIsRunning = false; hasBuzzed = false; lastTickSec = -1; buzzLog = [];
+            if (partRAF) { cancelAnimationFrame(partRAF); partRAF = null; }
+            partDuration = data.duration || partDuration;
+            el.textContent = formatTime(partDuration); el.className = 'part-countdown-number idle';
+            stopBtn.disabled = true; stopBtn.className = 'stop-btn'; stopBtn.textContent = 'STOP';
+            document.getElementById('partResultsTitle').style.display = 'none';
+            document.getElementById('partResultsList').innerHTML = '';
+        }
+    }
+    function startPartCountdownLoop() {
+        if (partRAF) cancelAnimationFrame(partRAF);
+        function loop() {
+            if (!partIsRunning) return;
+            var remaining = partDuration - (Date.now() - partStartTime);
+            var el = document.getElementById('partCountdown');
+            el.textContent = formatTime(remaining);
+            if (remaining <= 5000 && remaining > 0) {
+                el.className = 'part-countdown-number urgent';
+                var sec = Math.ceil(remaining / 1000);
+                if (sec !== lastTickSec) { playTick(); lastTickSec = sec; }
+            } else if (remaining <= 0) {
+                el.textContent = '00:00'; el.className = 'part-countdown-number ended';
+                partIsRunning = false;
+                var sb = document.getElementById('stopBtn');
+                if (!hasBuzzed) { sb.disabled = true; sb.className = 'stop-btn'; }
+                return;
+            } else { el.className = 'part-countdown-number running'; }
+            partRAF = requestAnimationFrame(loop);
+        }
+        loop();
+    }
+
+    /* ============================================
+       PARTICIPANT: BUZZ
+    ============================================ */
+    function buzzIn() {
+        if (hasBuzzed || !partIsRunning || !judgeConn || !judgeConn.open) return;
+        var name = document.getElementById('inputName').value.trim();
+        judgeConn.send({ type: 'buzz', name: name, timestamp: Date.now() });
+        var stopBtn = document.getElementById('stopBtn');
+        stopBtn.disabled = true; stopBtn.className = 'stop-btn buzzed'; stopBtn.textContent = 'SENT...';
+    }
+
+    /* ============================================
+       KEYBOARD & EVENTS
+    ============================================ */
+    document.querySelectorAll('.role-card').forEach(function(card) {
+        card.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); } });
+    });
+    document.getElementById('inputCode').addEventListener('keydown', function(e) { if (e.key === 'Enter') joinRoom(); });
+    document.getElementById('inputName').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('inputCode').focus(); });
+    document.addEventListener('fullscreenchange', function() {
+        if (!document.fullscreenElement && presentationMode) {
+            presentationMode = false;
+            document.getElementById('judgeDisplay').classList.remove('pres-mode');
+            document.getElementById('judgeTopbar').classList.remove('hide');
+            document.getElementById('judgeControls').classList.remove('hide');
+            document.getElementById('partList').classList.remove('hide');
+            document.getElementById('btnPresent').innerHTML = '<i class="fas fa-expand"></i>';
+        }
+    });
+    document.addEventListener('touchend', function(e) {
+        var now = Date.now();
+        if (now - (document.lastTouchEnd || 0) < 300) e.preventDefault();
+        document.lastTouchEnd = now;
+    }, { passive: false });
+    </script>
+</body>
+</html>
